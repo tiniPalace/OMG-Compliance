@@ -6,7 +6,7 @@ origPgpFn="original_pgp.txt"
 linkedPgpFn="linked_pgp.txt"
 mirFn="mirrors.txt"
 pgpFn="pgp.txt"
-timeLimit=3
+timeLimit=5
 
 source .omgrc
 
@@ -103,7 +103,7 @@ done
 # Clean up temporary files
 [[ $verbose -eq 1 ]] && echo -e "\nRemoving downloaded files."
 
-rm $origMirFn
-rm $origPgpFn
-rm $linkedMirFn
-rm $linkedPgpFn
+rm $origMirFn &> /dev/null
+rm $origPgpFn &> /dev/null
+rm $linkedMirFn &> /dev/null
+rm $linkedPgpFn &> /dev/null
