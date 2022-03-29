@@ -1,0 +1,29 @@
+###########################################
+## Flags (1 is true, 0 is false)
+###########################################
+
+# Whether to use a temporary keyring or import keys of the site into your
+# private default gpg keyring.
+useTemporaryKeyring=1
+# Whether to use the temporary keyring to check signatures or use your private
+# keyring for this.
+checkWithPrivateKeyring=0
+# Produces compliance report.
+verbose=1
+# Use Tor to verify the Bitcoin block referenced by its hash in the canary.txt file.
+# Using Tor makes the verification slower.
+anonymousBitcoinHashVerification=1
+
+###########################################
+## Tor parameters
+###########################################
+portNumber=9050
+
+###########################################
+## OMG compliance parameters
+###########################################
+omgHttpCode=200
+omgContentType="text/plain"
+dayLimit=14
+requiredString="I am in control of my PGP key"
+updateString="I will update this canary within $dayLimit days."
