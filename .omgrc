@@ -13,6 +13,8 @@ verbose=1
 # Use Tor to verify the Bitcoin block referenced by its hash in the canary.txt file.
 # Using Tor makes the verification slower.
 anonymousBitcoinHashVerification=1
+# Use for strict verification of OMG compliance.
+strict=1
 
 ###########################################
 ## Tor parameters
@@ -25,5 +27,5 @@ portNumber=9050
 omgHttpCode=200
 omgContentType="text/plain"
 dayLimit=14
-requiredString="I am in control of my PGP key"
+requiredString="I am in control of my PGP key."
 updateString="I will update this canary within $dayLimit days."

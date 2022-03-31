@@ -39,7 +39,7 @@ fi
 
 # Downloading original files.
 
-[[ $verbose -eq 1 ]] && echo -e "Downloading files $origMirFn and $origPgpFn.."
+[[ $verbose -eq 1 ]] && echo -e "Downloading files /$mirFn and /$pgpFn.."
 
 mirRet=$(downloadFile "$url/$mirFn" $origMirFn)
 pgpRet=$(downloadFile "$url/$pgpFn" $origPgpFn)
@@ -71,7 +71,7 @@ do
         echo -e "WARNING: $link does not have a correctly formatted domain and will be ignored"
     else
         if [[ "$protocol$domain" != $url ]]; then
-            [[ $verbose -eq 1 ]] &&  echo -e -n "$protocol$domain, "
+            [[ $verbose -eq 1 ]] &&  echo -e " >\t$protocol$domain"
             links_array+=( "${protocol}${domain}" )
         fi
     fi
@@ -93,11 +93,21 @@ do
     fi
 
     if [[ $mirDiff == "" && $pgpDiff == "" ]]; then
-        echo -e -n "\033[1;96m[OK]\033[0m\t"
+        echo -e "\033[1;96m[OK]\033[0m\t$link"
     else
-        echo -e -n "\033[1;91m[ X]\033[0m\t"
+        echo -e "\033[1;91m[ X]\033[0m\t$link"
+        if [[ $verbose -eq 1 ]]; then
+            if [[ $mirRet != "success" ]]; then
+                echo -e "      ?\tWasn't able to download $mirFn."
+            elif [[ ! -e $linkedPgpFn ]]; then
+                echo -e "      ?\tWasn't able to download $pgpFn."
+            elif [[ $mirDiff != "" ]]; then
+                echo -e "      ?\tThe $mirFn file did not match."
+            elif [[ $pgpDiff != "" ]]; then
+                echo -e "      ?\tThe $pgpFn file did not match."
+            fi
+        fi
     fi
-    echo "$link"
 done
 
 # Clean up temporary files

@@ -163,14 +163,28 @@ VerifyResponse canary.txt $tempCanFn
 
 # String inclusion -------------------------------------------------
 
+search_pattern1="/$requiredString/p"
+search_pattern2="/$updateString/p"
+if [[ $strict -ne 1 ]]; then
+    search_pattern1=$(echo $requiredString | sed -e "s/\./\[\.\]\*/g")
+    search_pattern1="s/^.*($search_pattern1).*/\1/pi"
+    search_pattern2=$(echo $updateString | sed -e "s/\./\[\.\]\*/g")
+    search_pattern2="s/^.*($search_pattern2).*$/\1/pi"
+fi
+
+
 if [[ $correctResponse -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo -n -e "Contains required strings:\t"
-    containsString=$(sed -n -E "/$requiredString/p" $tempCanFn | wc -l)
-    containsString2=$(sed -n -E "/$updateString/p" $tempCanFn | wc -l)
-    if [[ $containsString -gt 0 && $containsString2 -gt 0 ]]; then
+    containsString1=$(sed -n -E "$search_pattern1" $tempCanFn | wc -l)
+    containsString2=$(sed -n -E "$search_pattern2" $tempCanFn | wc -l)
+    if [[ $containsString1 -gt 0 && $containsString2 -gt 0 ]]; then
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
     else
-        [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m"
+        if [[ $verbose -eq 1 ]]; then
+            echo -e "\033[1;91m[ X]\033[0m: Missing strings"
+            [[ $containsString1 -eq 0 ]] && echo -e "\t\"$requiredString\""
+            [[ $containsString2 -eq 0 ]] && echo -e "\t\"$updateString\""
+        fi
         nonCompliance=$((nonCompliance+1))
     fi
 
@@ -178,6 +192,10 @@ if [[ $correctResponse -eq 1 ]]; then
 
     [[ $verbose -eq 1 ]] && echo -n -e "Contains date:\t\t\t"
     includedDate=$(sed -n -E "s/^.*([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/p" $tempCanFn)
+    # Try more date formats of not strict
+    if [[ $includedDate == "" && $strict -ne 1 ]]; then
+        includedDate=$(sed -n -E "s/^.* ([1-3]?[1-9]+)[a-z]*( [a-zA-Z]* [0-9]{4}).*/\1\2/p" $tempCanFn)
+    fi
     if [[ $includedDate != "" ]]; then
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
 
