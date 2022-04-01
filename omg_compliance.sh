@@ -10,9 +10,9 @@ tempKeyringFile="temp_keyring"
 pgpImported=0
 
 if [[ $anonymousBitcoinHashVerification -eq 1 ]]; then
-    torProxyOption="-x socks5h://localhost:$portNumber "
+    torProxyOption="-x socks5h://localhost:$portNumber https://blockchain.info/rawblock/"
 else
-    torProxyOption=""
+    torProxyOption="https://blockchain.info/rawblock/"
 fi
 
 nonCompliance=0     # Counts compliance issues
@@ -222,13 +222,19 @@ if [[ $correctResponse -eq 1 ]]; then
 
     includedHash=$(sed -n -E "/^[A-Fa-f0-9]{64}$/p" $tempCanFn)
 
-    # Search hash on blockchain.info
-    hashTime=$(curl -s ${torProxyOption}https://blockchain.info/rawblock/$includedHash | sed -n -E "s/.*\"time\":[ ]*([0-9]*),.*/\1/p")
+    # Search hash on blockstream.com's onion site, or on blockchain.info
+    if [[ $anonymousBitcoinHashVerification -eq 1 ]]; then
+        blockchain_url="http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/api/block/"
+        hashTime=$(curl -s -x socks5h://localhost:$portNumber $blockchain_url$includedHash | sed -n -E "s/^.*\"timestamp\":[ ]*([0-9]*),.*$/\1/p")
+    else
+        blockchain_url="https://blockchain.info/rawblock/"
+        hashTime=$(curl -s $blockchain_url$includedHash | sed -n -E "s/.*\"time\":[ ]*([0-9]*),.*/\1/p")
+    fi
 
     if [[ $hashTime != "" ]]; then
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
     else
-        [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\tThe hash $includedHash could not be found on the bitcoin blockchain."
+        [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\tThe hash $includedHash could not be found on $blockchain_url"
         nonCompliance=$((nonCompliance+1))
     fi
 
