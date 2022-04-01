@@ -9,12 +9,6 @@ tempCanFn="temp_canary.txt"
 tempKeyringFile="temp_keyring"
 pgpImported=0
 
-if [[ $anonymousBitcoinHashVerification -eq 1 ]]; then
-    torProxyOption="-x socks5h://localhost:$portNumber https://blockchain.info/rawblock/"
-else
-    torProxyOption="https://blockchain.info/rawblock/"
-fi
-
 nonCompliance=0     # Counts compliance issues
 
 ###########################################
