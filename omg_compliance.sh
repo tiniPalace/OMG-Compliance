@@ -59,11 +59,28 @@ function VerifyResponse () {
 ## Validating URL Format
 ###########################################
 
-url="$1"
-if [[ $# != 1 || ! $url =~ http[s]?://[a-z0-9]*\.?[a-z0-9\-]+\.[a-z]+$ ]]; then
-    echo -e "ERROR: '${0##*/}' needs a single argument containing a valid url on the form\n\n http[s]://[xxx.]xxxxxxxxx.xxxx" >&2
+# Splitting scheme and url
+domain=$(echo $1 | sed -n -E "s/^([a-z]*[:]+[\/]+(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*)|(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*))(\/.*)?$/\2\4/p")
+scheme=$(echo $1 | sed -n -E "s/^([a-z]+)[:]+\/[\/]+[a-zA-Z0-9\.\-]*$/\1/p")
+
+if [[ $# != 1 || $domain == "" ]]; then
+    echo -e "ERROR: '${0##*/}' needs a single argument containing a valid url on the form\n\thttp[s]://[xxx.]xxxxxxxxx.xxxx" >&2
     exit 1
+elif [[ $domain =~ ^[a-z0-9]{56}\.onion$ ]]; then
+    scheme="http"
+elif [[ $scheme == "" && $domain != "" ]]; then
+    [[ $verbose -eq 1 ]] && echo "Warning: no protocol attached: assuming https."
+    scheme="https"
+elif [[ $scheme != "https" ]]; then
+    echo -e -n "Warning: non-https protocol detected on non-onion domain.\nYour connection may be vulnerable to a man-in-the-middle attack.\nAre you sure you want to proceed? [y/n] "
+    read ans
+    if [[ ! $ans =~ [yY] ]]; then
+        exit 0
+    fi
 fi
+
+url="$scheme://$domain"
+
 
 ###########################################
 ## pgp.txt
@@ -157,41 +174,48 @@ VerifyResponse canary.txt $tempCanFn
 
 # String inclusion -------------------------------------------------
 
-search_pattern1="/$requiredString/p"
-search_pattern2="/$updateString/p"
-if [[ $strict -ne 1 ]]; then
-    search_pattern1=$(echo $requiredString | sed -e "s/\./\[\.\]\*/g")
-    search_pattern1="s/^.*($search_pattern1).*/\1/pi"
-    search_pattern2=$(echo $updateString | sed -e "s/\./\[\.\]\*/g")
-    search_pattern2="s/^.*($search_pattern2).*$/\1/pi"
-fi
-
-
 if [[ $correctResponse -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo -n -e "Contains required strings:\t"
-    containsString1=$(sed -n -E "$search_pattern1" $tempCanFn | wc -l)
-    containsString2=$(sed -n -E "$search_pattern2" $tempCanFn | wc -l)
+    containsString1=$(sed -n -E "/$requiredString/p" $tempCanFn | wc -l)
+    containsString2=$(sed -n -E "/$updateString/p" $tempCanFn | wc -l)
     if [[ $containsString1 -gt 0 && $containsString2 -gt 0 ]]; then
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
     else
-        if [[ $verbose -eq 1 ]]; then
-            echo -e "\033[1;91m[ X]\033[0m: Missing strings"
-            [[ $containsString1 -eq 0 ]] && echo -e "\t\"$requiredString\""
-            [[ $containsString2 -eq 0 ]] && echo -e "\t\"$updateString\""
+        if [[ $strict -ne 1 ]]; then
+            search_pattern1=$(echo $requiredString | sed -e "s/\./\[\.\]\*/g")
+            search_pattern2=$(echo $updateString | sed -e "s/\./\[\.\]\*/g")
+            containsString1=$(sed -n -E "s/^.*($search_pattern1).*$/\1/pi" $tempCanFn | wc -l)
+            containsString2=$(sed -n -E "s/^.*($search_pattern2).*$/\1/pi" $tempCanFn | wc -l)
         fi
-        nonCompliance=$((nonCompliance+1))
+
+        if [[ $containsString1 -gt 0 && $containsString2 -gt 0 ]]; then
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Strings are not correctly formatted."
+        else
+            if [[ $verbose -eq 1 ]]; then
+                echo -e "\033[1;91m[ X]\033[0m: Missing strings"
+                [[ $containsString1 -eq 0 ]] && echo -e "\t\"$requiredString\""
+                [[ $containsString2 -eq 0 ]] && echo -e "\t\"$updateString\""
+            fi
+            nonCompliance=$((nonCompliance+1))
+        fi
     fi
 
 # Checking date ----------------------------------------------------
 
     [[ $verbose -eq 1 ]] && echo -n -e "Contains date:\t\t\t"
     includedDate=$(sed -n -E "s/^.*([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/p" $tempCanFn)
+    nonStrictDate=0
     # Try more date formats of not strict
     if [[ $includedDate == "" && $strict -ne 1 ]]; then
         includedDate=$(sed -n -E "s/^.* ([1-3]?[1-9]+)[a-z]*( [a-zA-Z]* [0-9]{4}).*/\1\2/p" $tempCanFn)
+        nonStrictDate=1
     fi
     if [[ $includedDate != "" ]]; then
-        [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
+        if [[ $nonStrictDate -eq 0 ]]; then
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
+        else
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Date is not correctly formatted."
+        fi
 
         [[ $verbose -eq 1 ]] && echo -n -e "Date within time-limit:\t\t"
         dateLimit=$(date --date="$includedDate +$dayLimit days" "+%s")
