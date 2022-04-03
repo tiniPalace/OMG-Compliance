@@ -15,6 +15,11 @@ verbose=1
 anonymousBitcoinHashVerification=1
 # Use for strict verification of OMG compliance.
 strict=1
+# Double checks the bitcoin blockchain for the time of the included hash by using an
+# independent blockchain explorer from the first.
+doubleCheckBlockchain=1
+# Save the last used URL to file so that the user don't need to supply it on a second run.
+cacheURL=0
 
 ###########################################
 ## Tor parameters

@@ -7,6 +7,7 @@ tempPgpFn="temp_pgp.txt"
 tempMirFn="temp_mirrors.txt"
 tempCanFn="temp_canary.txt"
 tempKeyringFile="temp_keyring"
+lastURLFn="lasturl.txt"
 pgpImported=0
 
 nonCompliance=0     # Counts compliance issues
@@ -54,18 +55,31 @@ function VerifyResponse () {
         nonCompliance=$((nonCompliance+1))
     fi
 }
+# Exit with usage message.
+function ErrorExit () {
+    echo -e "ERROR: '${0##*/}' needs a single argument containing a valid url on the form\n\thttp[s]://[xxx.]xxxxxxxxx.xxxx" >&2
+    exit 1
+}
 
 ###########################################
 ## Validating URL Format
 ###########################################
 
-# Splitting scheme and url
-domain=$(echo $1 | sed -n -E "s/^([a-z]*[:]+[\/]+(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*)|(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*))(\/.*)?$/\2\4/p")
-scheme=$(echo $1 | sed -n -E "s/^([a-z]+)[:]+\/[\/]+[a-zA-Z0-9\.\-]*$/\1/p")
+# Find last argument
+url=${@: -1}
+if [[ $# -eq 0 && -e $lastURLFn ]]; then
+    [[ $verbose -eq 1 ]] && echo -e "No URL argument found, loading last used URL."
+    url=$(cat $lastURLFn)
+elif [[ $# -eq 0 ]]; then
+    ErrorExit
+fi
 
-if [[ $# != 1 || $domain == "" ]]; then
-    echo -e "ERROR: '${0##*/}' needs a single argument containing a valid url on the form\n\thttp[s]://[xxx.]xxxxxxxxx.xxxx" >&2
-    exit 1
+# Splitting scheme and url
+domain=$(echo $url | sed -n -E "s/^([a-z]*[:]+[\/]+(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*)|(([a-z0-9A-Z\-]*\.)+[a-z0-9A-Z\-]*))(\/.*)?$/\2\4/p")
+scheme=$(echo $url | sed -n -E "s/^([a-z]+)[:]+\/[\/]+[a-zA-Z0-9\.\-]*$/\1/p")
+
+if [[ $# -gt 1 || $domain == "" ]]; then
+    ErrorExit
 elif [[ $domain =~ ^[a-z0-9]{56}\.onion$ ]]; then
     scheme="http"
 elif [[ $scheme == "" && $domain != "" ]]; then
@@ -80,6 +94,7 @@ elif [[ $scheme != "https" ]]; then
 fi
 
 url="$scheme://$domain"
+[[ $cacheURL -eq 1 ]] && echo $url > $lastURLFn
 
 
 ###########################################
@@ -139,12 +154,18 @@ if [[ $correctResponse -eq 1 ]]; then
     [[ $verbose -eq 1 ]] && echo -n -e "Contains compliant links:\t"
 
     numLinks=0
+    additionalLinks=0
     if [[ $correctResponse -eq 1 ]]; then
         # Find number of links in mirrors.txt
-        numLinks=$(cat ./$tempMirFn | sed -n -E "/^http[s]?:\/\//p" | wc -l)
+        numLinks=$(cat ./$tempMirFn | sed -n -E "/^http[s]?:\/\/[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+$/p" | wc -l)
+        if [[ $strict -ne 1 ]]; then
+            additionalLinks=$(cat ./$tempMirFn | sed -n -E "/^([h]+[t]+[p]+[s]*[:]+\/[\/]+[a-zA-Z0-9\.\-]+|[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+)$/p" | wc -l)
+        fi
     fi
     if [[ $numLinks -gt 0 ]]; then
-        [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
+        [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m: $numLinks"
+    elif [[ $additionalLinks -gt 0 ]]; then
+        [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Links not correctly formatted."
     else
         [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m"
         nonCompliance=$((nonCompliance+1))
@@ -184,20 +205,20 @@ if [[ $correctResponse -eq 1 ]]; then
         if [[ $strict -ne 1 ]]; then
             search_pattern1=$(echo $requiredString | sed -e "s/\./\[\.\]\*/g")
             search_pattern2=$(echo $updateString | sed -e "s/\./\[\.\]\*/g")
-            containsString1=$(sed -n -E "s/^.*($search_pattern1).*$/\1/pi" $tempCanFn | wc -l)
-            containsString2=$(sed -n -E "s/^.*($search_pattern2).*$/\1/pi" $tempCanFn | wc -l)
+            containsLazyString1=$(sed -n -E "s/^.*($search_pattern1).*$/\1/pi" $tempCanFn | wc -l)
+            containsLazyString2=$(sed -n -E "s/^.*($search_pattern2).*$/\1/pi" $tempCanFn | wc -l)
         fi
 
-        if [[ $containsString1 -gt 0 && $containsString2 -gt 0 ]]; then
+        if [[ $containsLazyString1 -gt 0 && $containsLazyString2 -gt 0 ]]; then
             [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Strings are not correctly formatted."
         else
             if [[ $verbose -eq 1 ]]; then
                 echo -e "\033[1;91m[ X]\033[0m: Missing strings"
-                [[ $containsString1 -eq 0 ]] && echo -e "\t\"$requiredString\""
-                [[ $containsString2 -eq 0 ]] && echo -e "\t\"$updateString\""
             fi
             nonCompliance=$((nonCompliance+1))
         fi
+        [[ $verbose -eq 1 && $containsString1 -eq 0 ]] && echo -e "\t\"$requiredString\""
+        [[ $verbose -eq 1 && $containsString2 -eq 0 ]] && echo -e "\t\"$updateString\""
     fi
 
 # Checking date ----------------------------------------------------
@@ -214,7 +235,7 @@ if [[ $correctResponse -eq 1 ]]; then
         if [[ $nonStrictDate -eq 0 ]]; then
             [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
         else
-            [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Date is not correctly formatted."
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;93m[--]\033[0m: Date '$includedDate' is not correctly formatted."
         fi
 
         [[ $verbose -eq 1 ]] && echo -n -e "Date within time-limit:\t\t"
@@ -254,6 +275,21 @@ if [[ $correctResponse -eq 1 ]]; then
     else
         [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\tThe hash $includedHash could not be found on $blockchain_url"
         nonCompliance=$((nonCompliance+1))
+    fi
+
+    # Double-check that the hash time is the same for independent blockchain explorer.
+    if [[ $hashTime != "" && $doubleCheckBlockchain -eq 1 ]]; then
+        [[ $verbose -eq 1 ]] && echo -n -e "Double checking blockchain:\t"
+        blockchain_check_url="http://btcexpz7xlwrqknqw6p3bok6shf73qtkd6zxct4x4qta2ktvh7ntprad.onion/api/block/"
+        checkHashTime=$(curl -s -x socks5h://localhost:$portNumber $blockchain_check_url$includedHash | sed -n -E "s/^.*\"time\":[ ]*([0-9]*),.*$/\1/p")
+        interval=5
+        timeDiff=$(( hashTime - checkHashTime ))
+        if [[ $timeDiff -gt -$interval && $timeDiff -lt $interval ]]; then
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
+        else
+            [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\tThere was a $timeDiff s time difference between the times returned from\n: $blockchain_url,\n: $blockchain_check_url,\nfor hash\n: $includedHash,\n which is outside the allowed interval of $interval seconds."
+            nonCompliance=$((nonCompliance+1))
+        fi
     fi
 
     if [[ $hashTime != "" ]]; then
