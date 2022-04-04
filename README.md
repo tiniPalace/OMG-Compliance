@@ -1,4 +1,4 @@
-# OMG Compliance
+# OMG Compliance Automation Kit
 
 This shell script implements a client verification that an onion site
 adheres to the *"Onion Mirror Guidelines"*, which are defined in the *omg.txt*
@@ -42,6 +42,8 @@ by running `chmod 774 *.sh`.
 
 ## Use
 
+### Single URL compliancy
+
 To check if a site is OMG compliant, navigate to the directory where you downloaded this
 repository and then
 run
@@ -59,6 +61,8 @@ file before going on to attempt to verify the other requirements.
 By default, the script produces a detailed
 report for each file over whether it exists and whether each OMG requirement is met. Finally
 it counts the number of compliancy issues that it found. In the non-verbose version, only this last part is included in the output.
+
+### Mirror compliancy
 
 For the site to be completely OMG compliant, we also need to check if all links found in
 `mirrors.txt` link to a site that contains the same content. You can check this by running
