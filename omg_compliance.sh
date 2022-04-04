@@ -58,7 +58,7 @@ function VerifyResponse () {
 }
 # Exit with usage message.
 function ErrorExit () {
-    echo -e "ERROR: '${0##*/}' needs an argument containing a valid url on the form\n:~$ ${0##*/} [-cnlespk] http[s]://[xxx.]xxxxxxxxx.xxxx" >&2
+    echo -e "ERROR: '${0##*/}' needs an argument containing a valid url on the form\n:~$ ${0##*/} [-ceiklnps] http[s]://[xxx.]xxxxxxxxx.xxxx" >&2
     exit 1
 }
 
@@ -69,7 +69,7 @@ function ErrorExit () {
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -c|--cache-URL)
+        -c|--cache-url)
             cacheURL=1
             shift
             ;;
@@ -89,8 +89,12 @@ while [[ $# -gt 0 ]]; do
             verbose=0
             shift
             ;;
-        -k|--private-keyring)
+        -i|--import-keys)
             useTemporaryKeyring=0
+            shift
+            ;;
+        -k|--private-keyring)
+            checkWithPrivateKeyring=1
             shift
             ;;
         -p|--port)

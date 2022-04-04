@@ -34,34 +34,29 @@ download it with
 git clone https://github.com/tiniPalace/OMG-compliance
 ```
 If you downloaded the *zip*-file, then go to your download directory and unzip it, e.g. with
-```
-unzip OMG-compliance-main.zip
-```
+`unzip OMG-compliance-main.zip`,
 which will create an `OMG-compliance-main` directory in your download folder. If you are
 not able to run the scripts, you might need to change premissions to make them executable
-by running
-```
-chmod 774 *.sh
-```
+by running `chmod 774 *.sh`.
 
 
 ## Use
 
 To check if a site is OMG compliant, navigate to the directory where you downloaded this
-repository, make sure that the file `omg_compliance.sh` has executable premissions and then
+repository and then
 run
 ```
-./omg_compliance.sh [website domain url e.g. https://dark.fail]
+./omg_compliance.sh [-ceklnps] [website domain url e.g. https://dark.fail]
 ```
-It is important that you include the `https://` in the url, or it willl throw an error.
 Running `omg_compliance.sh` will check if the domain has included all the required files
-in the [OMG Guidelines](https://dark.fail/spec/omg.txt) and whether these files contain
-the required content.
+in the [OMG Guidelines](./omg.txt) and whether these files contain
+the required content. The part about `[-ceiklnps]` are optional arguments whose functions are
+detailed below.
 
 The script carefully first checks that the returned response for each file is a plaintext
 file before going on to attempt to verify the other requirements.
 
-If the *verbose* setting is chosen, which it is by default, the script produces a detailed
+By default, the script produces a detailed
 report for each file over whether it exists and whether each OMG requirement is met. Finally
 it counts the number of compliancy issues that it found. In the non-verbose version, only this last part is included in the output.
 
@@ -72,16 +67,28 @@ For the site to be completely OMG compliant, we also need to check if all links 
 ```
 This script checks if the links all contain the same `pgp.txt` and `mirrors.txt` file.
 
-## Settings
+## Options
 
-Variables that are meant to be changable by users are found in the file `.omgrc`.
-Most of these variables are *flag* variables which are meant to be either `0` or `1`.
-`1` means that the *flag* is turned on, while `0` means that it is off.
+Options can be set to modify the behaviour of `omg_compliance.sh` by including these arguments
+before the url, e.g.
+```
+./omg_compliance --non-strict https://tor.taxi
+```
+Below is a list of explanations of the different arguments
 
-Below is a list of explanations of the different user-controlled variables
-
-- `useTemporaryKeyring` (default=`1`): The script could either use your default `gpg` keyring and import the keys of the site into this, or it could create a temporary keyring in the same folder as the script in order to check pgp signatures.
-- `checkWithPrivateKeyring` (default=`0`): If this is set to `1` then the script will use your private default keyring in order to verify pgp signatures regardsless of the status of the `useTemporaryKeyring`. This can be useful if you already have imported the keys of the site and want to check that the site still uses the same private key for signatures.
-- `verbose` (default=`1`): If set to `0` the script will only print whether or not the site passed all the compliance tests. By default, the script prints a more detailed report.
-- `anonymousBitcoinHashVerification` (default=`1`): In order to verify the bitcoin hash in the canary file, the script queries the *blockchain.info* API. If this flag is set to `1`, the query is sent through the Tor network, which provides security and anonymity. If set to `0`, the query is sent directly, which is significantly faster.
-- `portNumber` (default=`9050`): This sets the port number where we connect to the Tor Socks5 proxy. By default this is set to `9050`, but if you have set up Tor in a non-default way, you will have to change this accordingly.
+- `-c, --cache-url`  
+Save URL to a file `lasturl.txt`. If the script is then run without a URL parameter, the url will be loaded from this file.
+- `-e, --clearnet-explorer`  
+Use the bitcoin blockchain explorer api on the clearnet at `https://blockchain.info/rawblock/`, instead of the hidden service at `http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/api/block/`.
+- `-i, --import-keys`  
+Import the keys found in `/pgp.txt` into your private keyring, which in most cases are located at `~/.gnupg/`.
+- `-k, --private-keyring`  
+Use the keys found in your private keyring to verify the signatures of the different *"omg files"*, instead of verifying them with the key found in `/pgp.txt`. Note that this only has any point to it if you don't use the `-i` option described above.
+- `-l, --non-strict, --lazy`  
+Allow for some fuzzyness in the verification of OMG criteria such as case in-sensitivity and optional punctuation in string matching, different date format and non-OMG sanctioned url specification in the `mirrors.txt` file.
+- `-n, --no-double-check`  
+This options prevents the script from taking the time to independently check that the time-value found from the blockchain explorer after searching for the hash found in `/canary.txt` is approximately equal to the one found when using a completely different blockchain explorer. This has the advantage of making the script faster.
+- `-p <port number>, --port <port number>`  
+Specify a different port number of the Tor SOCKS5 proxy. The standard is to use `localhost:9050`.
+- `-s, --silent, -q, --quiet`
+Turn off verbose mode and make the script only output whether the site is OMG compliant or not.
