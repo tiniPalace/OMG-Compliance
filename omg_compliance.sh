@@ -12,6 +12,7 @@ pgpImported=0
 
 nonCompliance=0     # Counts compliance issues
 
+
 ###########################################
 ## Functions
 ###########################################
@@ -57,9 +58,58 @@ function VerifyResponse () {
 }
 # Exit with usage message.
 function ErrorExit () {
-    echo -e "ERROR: '${0##*/}' needs a single argument containing a valid url on the form\n\thttp[s]://[xxx.]xxxxxxxxx.xxxx" >&2
+    echo -e "ERROR: '${0##*/}' needs an argument containing a valid url on the form\n:~$ ${0##*/} [-cnlespk] http[s]://[xxx.]xxxxxxxxx.xxxx" >&2
     exit 1
 }
+
+
+###########################################
+## Parsing arguments
+###########################################
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--cache-URL)
+            cacheURL=1
+            shift
+            ;;
+        -n|--no-double-check)
+            doubleCheckBlockchain=0
+            shift
+            ;;
+        -l|--non-strict|--lazy)
+            strict=0
+            shift
+            ;;
+        -e|--clearnet-explorer)
+            anonymousBitcoinHashVerification=0
+            shift
+            ;;
+        -s|-q|--quiet|--silent)
+            verbose=0
+            shift
+            ;;
+        -k|--private-keyring)
+            useTemporaryKeyring=0
+            shift
+            ;;
+        -p|--port)
+            portNumber="$2"
+            shift
+            shift
+            ;;
+        -*|--*)
+            echo "ERROR: Unknown option $1"
+            ErrorExit
+            ;;
+        *)
+            POS_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${POS_ARGS[@]}"
+
 
 ###########################################
 ## Validating URL Format
