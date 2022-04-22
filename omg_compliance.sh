@@ -51,9 +51,11 @@ function VerifyResponse () {
     if [[ $ctype == $omgContentType && $httpCode -eq $omgHttpCode ]]; then
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
         correctResponse=1
+        return 0
     else
         [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\t/$remoteFn returned $response"
         nonCompliance=$((nonCompliance+1))
+        return 1
     fi
 }
 # Exit with usage message.
@@ -212,7 +214,6 @@ if [[ $correctResponse -eq 1 ]]; then
     if [[ $correctResponse -eq 1 ]]; then
         # Find number of links in mirrors.txt
         numLinks=$(cat ./$tempMirFn | sed -n -E "/^http[s]?:\/\/[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+[\n\r]*$/p" | wc -l)
-        echo $numLinks
         if [[ $strict -ne 1 ]]; then
             additionalLinks=$(cat ./$tempMirFn | sed -n -E "/^([h]+[t]+[p]+[s]*[:]+\/[\/]+[a-zA-Z0-9\.\-]+|[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+)[\n\r]*$/p" | wc -l)
         fi
@@ -384,6 +385,12 @@ if [[ $verbose -eq 1 ]]; then
     echo -e "\nChecking optional file /$optionalFn"
     echo "---------------------------------------------"
     VerifyResponse $optionalFn $outFn
+
+    # Failure to include related.txt does not mean non-compliance.
+    if [[ $? -ne 0 ]]; then
+        nonCompliance=$((nonCompliance-1))
+    fi
+
     rm $outFn &> /dev/null
 fi
 
