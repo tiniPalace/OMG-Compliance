@@ -52,7 +52,7 @@ function VerifyResponse () {
         [[ $verbose -eq 1 ]] && echo -e "\033[1;96m[OK]\033[0m"
         correctResponse=1
     else
-        [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\t$url/$remoteFn returned $response"
+        [[ $verbose -eq 1 ]] && echo -e "\033[1;91m[ X]\033[0m:\t/$remoteFn returned $response"
         nonCompliance=$((nonCompliance+1))
     fi
 }
@@ -211,9 +211,10 @@ if [[ $correctResponse -eq 1 ]]; then
     additionalLinks=0
     if [[ $correctResponse -eq 1 ]]; then
         # Find number of links in mirrors.txt
-        numLinks=$(cat ./$tempMirFn | sed -n -E "/^http[s]?:\/\/[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+$/p" | wc -l)
+        numLinks=$(cat ./$tempMirFn | sed -n -E "/^http[s]?:\/\/[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+[\n\r]*$/p" | wc -l)
+        echo $numLinks
         if [[ $strict -ne 1 ]]; then
-            additionalLinks=$(cat ./$tempMirFn | sed -n -E "/^([h]+[t]+[p]+[s]*[:]+\/[\/]+[a-zA-Z0-9\.\-]+|[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+)$/p" | wc -l)
+            additionalLinks=$(cat ./$tempMirFn | sed -n -E "/^([h]+[t]+[p]+[s]*[:]+\/[\/]+[a-zA-Z0-9\.\-]+|[a-zA-Z0-9\-]+\.[a-zA-Z0-9\.\-]+)[\n\r]*$/p" | wc -l)
         fi
     fi
     if [[ $numLinks -gt 0 ]]; then
@@ -398,6 +399,7 @@ if [[ $useTemporaryKeyring -eq 1 ]]; then
     rm ./$tempKeyringFile* &> /dev/null
     rm ./random_seed &> /dev/null
     rm ./trustdb.gpg &> /dev/null
+    rm -r ./private-keys-v1.d &> /dev/null
 fi
 
 
